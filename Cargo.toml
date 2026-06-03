@@ -1,0 +1,13 @@
+[package]
+name = "skat_engine"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "deal"
+path = "tools/deal.rs"
+
+[dependencies]
+itertools = "0.14.0"
+owo-colors = { version = "4.3.0", features = ["supports-colors"] }
+rand = { version = "0.10.1", features = ["thread_rng"] }
