@@ -33,6 +33,14 @@ impl Hand {
     }
 }
 
+impl From<[Card; 10]> for Hand {
+    fn from(value: [Card; 10]) -> Self {
+        Self {
+            cards: value.into(),
+        }
+    }
+}
+
 fn make_suit_game_sorter(game: &SuitGame) -> impl Fn(&Card, &Card) -> Ordering {
     |a, b| {
         let a_is_jack = a.rank == Rank::Jack;

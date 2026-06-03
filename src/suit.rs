@@ -16,6 +16,15 @@ impl Suit {
             Suit::Clubs => 12,
         }
     }
+
+    pub fn name(&self) -> &'static str {
+        match self {
+            Suit::Diamonds => "Diamonds",
+            Suit::Hearts => "Hearts",
+            Suit::Spades => "Spades",
+            Suit::Clubs => "Clubs",
+        }
+    }
 }
 
 #[macro_export]

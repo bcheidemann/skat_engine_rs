@@ -5,6 +5,7 @@ pub mod deal;
 
 pub trait CardDisplayExt {
     fn display_term(&self) -> String;
+    fn display_rust(&self) -> String;
 }
 
 impl CardDisplayExt for Card {
@@ -18,5 +19,9 @@ impl CardDisplayExt for Card {
                 .if_supports_color(owo_colors::Stream::Stdout, |text| text.black())
                 .to_string(),
         }
+    }
+
+    fn display_rust(&self) -> String {
+        format!("Card!({} of {})", self.rank.name(), self.suit.name())
     }
 }

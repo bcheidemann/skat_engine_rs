@@ -30,6 +30,19 @@ impl Rank {
         }
     }
 
+    pub fn name(&self) -> &'static str {
+        match self {
+            Rank::N7 => "7",
+            Rank::N8 => "8",
+            Rank::N9 => "9",
+            Rank::N10 => "10",
+            Rank::Jack => "Jack",
+            Rank::Queen => "Queen",
+            Rank::King => "King",
+            Rank::Ace => "Ace",
+        }
+    }
+
     /// Compares the rank to another rank, returning their relative ordering for
     /// the current game kind.
     #[inline(always)]

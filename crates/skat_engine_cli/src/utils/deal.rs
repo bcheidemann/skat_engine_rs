@@ -1,9 +1,10 @@
 use rand::{Rng, seq::SliceRandom};
 use skat_engine::{DECK, card::Card, hand::Hand};
 
-type Skat = [Card; 2];
+pub type Skat = [Card; 2];
+pub type DealtHands = (Skat, Hand, Hand, Hand);
 
-pub fn deal<R>(rng: &mut R) -> (Skat, Hand, Hand, Hand)
+pub fn deal<R>(rng: &mut R) -> DealtHands
 where
     R: Rng + ?Sized,
 {
