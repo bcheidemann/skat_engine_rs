@@ -7,6 +7,10 @@ There are two main parts of this project:
 1. `skat_engine` (a crate for simulating Skat games)
 2. `skat_engine_cli` (a CLI for playing Skat)
 
+## `skat_engine_cli`
+
+Terminal output:
+
 ```
 ┏━━━━━━━━━━━━━━━━ Ben’s Skat Engine ━━━━━━━━━━━━━━━━┓
 ┃                                                   ┃
