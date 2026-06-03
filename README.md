@@ -16,13 +16,13 @@ There are two main parts of this project:
 ┃                                                   ┃
 ┃                                                   ┃
 ┃                    Last Trick                     ┃
-┃                       🂫 🃗 🃋                       ┃
+┃                      🂫 🃗 🃋                      ┃
 ┃                                                   ┃
 ┃                                                   ┃
-┃                         🂻                         ┃
+┃                         🂻                        ┃
 ┃                                                   ┃
 ┃                     Player #2                     ┃
-┃                 🂱 🂾 🂹 🂸 🂮 🂨 🃁 🃈 🃇                 ┃
+┃              🂱 🂾 🂹 🂸 🂮 🂨 🃁 🃈 🃇              ┃
 ┃                                                   ┃
 ┃                                                   ┃
 ┃                                                   ┃
