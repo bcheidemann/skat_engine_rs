@@ -1,6 +1,5 @@
 use rand::{Rng, seq::SliceRandom};
-
-use crate::{card::Card, hand::Hand, utils::deck::DECK};
+use skat_engine::{DECK, card::Card, hand::Hand};
 
 type Skat = [Card; 2];
 

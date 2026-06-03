@@ -1,5 +1,3 @@
-use owo_colors::OwoColorize;
-
 use crate::{game::Game, rank::Rank, suit::Suit};
 
 #[derive(Clone, Debug)]
@@ -15,18 +13,6 @@ impl Card {
             Game::Suit(suit_game) => self.rank == Rank::Jack || self.suit == suit_game.trump_suit,
             Game::Grand(_) => self.rank == Rank::Jack,
             Game::Null(_) => false,
-        }
-    }
-
-    pub fn display_term(&self) -> String {
-        let c = self.char();
-        match self.suit {
-            Suit::Diamonds | Suit::Hearts => c
-                .if_supports_color(owo_colors::Stream::Stdout, |text| text.red())
-                .to_string(),
-            Suit::Spades | Suit::Clubs => c
-                .if_supports_color(owo_colors::Stream::Stdout, |text| text.black())
-                .to_string(),
         }
     }
 

@@ -2,8 +2,8 @@ use itertools::Itertools;
 use skat_engine::{
     card::Card,
     game::{Game, grand::GrandGame},
-    utils::deal::deal,
 };
+use skat_engine_cli::utils::{CardDisplayExt, deal::deal};
 
 pub fn main() {
     let game = Game::Grand(GrandGame {});
@@ -18,7 +18,7 @@ pub fn main() {
 
 fn display_cards(cards: impl AsRef<[Card]>) -> String {
     Itertools::intersperse(
-        cards.as_ref().iter().map(Card::display_term),
+        cards.as_ref().iter().map(CardDisplayExt::display_term),
         " ".to_string(),
     )
     .collect()
