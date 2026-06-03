@@ -5,7 +5,7 @@ edition = "2024"
 
 [[bin]]
 name = "deal"
-path = "tools/deal.rs"
+path = "tools/deal/bin.rs"
 
 [dependencies]
 itertools = "0.14.0"
