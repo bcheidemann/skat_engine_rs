@@ -16,6 +16,10 @@ impl Trick {
         }
     }
 
+    pub fn top_card(&self) -> Option<Card> {
+        self.cards().last().cloned()
+    }
+
     pub fn cards(&self) -> &Vec<Card> {
         &self.cards
     }
@@ -86,7 +90,7 @@ pub enum PlayCardOutcome {
     TrickComplete(WonTrick),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct WonTrick {
     pub winning_player: PlayerId,
     pub cards: [Card; 3],

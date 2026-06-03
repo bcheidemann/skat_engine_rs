@@ -12,8 +12,9 @@ pub struct GameState {
     players: [PlayerState; 3],
     soloist_tricks: Vec<WonTrick>,
     defender_tricks: Vec<WonTrick>,
+    last_won_trick: Option<WonTrick>,
     current_trick: Trick,
-    current_player: PlayerId,
+    current_player_id: PlayerId,
     soloist: PlayerId,
 }
 
@@ -31,22 +32,35 @@ impl GameState {
             players,
             soloist_tricks: Vec::with_capacity(10),
             defender_tricks: Vec::with_capacity(10),
+            last_won_trick: None,
             current_trick: Trick::empty(),
-            current_player: forehand,
+            current_player_id: forehand,
             soloist,
         }
+    }
+
+    pub fn last_won_trick(&self) -> Option<WonTrick> {
+        self.last_won_trick
+    }
+
+    pub fn current_trick(&self) -> &Trick {
+        &self.current_trick
     }
 
     pub fn player(&self, id: PlayerId) -> &PlayerState {
         &self.players[id.into_inner()]
     }
 
+    pub fn current_player_id(&self) -> PlayerId {
+        self.current_player_id
+    }
+
     pub fn current_player(&self) -> &PlayerState {
-        &self.players[self.current_player.into_inner()]
+        &self.players[self.current_player_id.into_inner()]
     }
 
     fn current_player_mut(&mut self) -> &mut PlayerState {
-        &mut self.players[self.current_player.into_inner()]
+        &mut self.players[self.current_player_id.into_inner()]
     }
 
     // TODO: Return sensible result
@@ -66,7 +80,7 @@ impl GameState {
         // SAFETY: It is safe fine to move `trick` out of `&self.current_trick`
         //         temporarily, as the field is guaranteed to be reassigned
         //         before any further accesses to `self.current_trick` occur.
-        let (trick, outcome) = trick.try_play_card(&self.game, self.current_player, played_card);
+        let (trick, outcome) = trick.try_play_card(&self.game, self.current_player_id, played_card);
 
         // SAFETY: See above.
         unsafe { std::ptr::write(&mut self.current_trick, trick) };
@@ -75,6 +89,7 @@ impl GameState {
             PlayCardOutcome::CardPlayed => {}
             PlayCardOutcome::InvalidCard => return Err(()),
             PlayCardOutcome::TrickComplete(won_trick) => {
+                self.last_won_trick = Some(won_trick);
                 if won_trick.winning_player == self.soloist {
                     self.soloist_tricks.push(won_trick);
                 } else {
@@ -85,7 +100,7 @@ impl GameState {
 
         self.current_player_mut().hand.cards.remove(card_idx);
 
-        self.current_player = self.current_player.next();
+        self.current_player_id = self.current_player_id.next();
 
         Ok(())
     }
