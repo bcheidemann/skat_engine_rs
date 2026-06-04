@@ -345,4 +345,140 @@ mod tests {
             .play_card(1) // Ace of Hearts
             .expect("should be allowed to break suit, since they only have a Jack in Diamonds");
     }
+
+    /// See https://github.com/bcheidemann/skat_engine_rs/issues/2
+    #[test]
+    pub fn regression_2_grand() {
+        let skat = [Card!(Jack of Hearts), Card!(7 of Clubs)];
+        let hand1 = [
+            Card!(Jack of Clubs),
+            Card!(Ace of Spades),
+            Card!(Jack of Diamonds),
+            Card!(10 of Diamonds),
+            Card!(King of Diamonds),
+            Card!(Queen of Diamonds),
+            Card!(9 of Diamonds),
+            Card!(8 of Diamonds),
+            Card!(7 of Diamonds),
+            Card!(10 of Clubs),
+        ];
+        let hand2 = [
+            Card!(Jack of Spades),
+            Card!(King of Clubs),
+            Card!(Queen of Clubs),
+            Card!(Ace of Hearts),
+            Card!(10 of Hearts),
+            Card!(King of Hearts),
+            Card!(Queen of Hearts),
+            Card!(9 of Hearts),
+            Card!(8 of Hearts),
+            Card!(7 of Hearts),
+        ];
+        let hand3 = [
+            Card!(Ace of Diamonds),
+            Card!(10 of Spades),
+            Card!(King of Spades),
+            Card!(Queen of Spades),
+            Card!(9 of Spades),
+            Card!(8 of Spades),
+            Card!(7 of Spades),
+            Card!(Ace of Clubs),
+            Card!(9 of Clubs),
+            Card!(8 of Clubs),
+        ];
+        let mut game_state = GameState::new(
+            Game::Grand(GrandGame {}),
+            skat,
+            [
+                PlayerState::new(hand1.into()),
+                PlayerState::new(hand2.into()),
+                PlayerState::new(hand3.into()),
+            ],
+            PlayerId::FIRST,
+            PlayerId::FIRST,
+        );
+
+        game_state.play_card(0).unwrap(); // Jack of Clubs
+        assert!(
+            game_state
+                .play_card(1) // King of Clubs
+                .is_err(),
+            "should not be allowed to play King of Clubs because player has a Jack of Spades"
+        );
+        game_state
+            .play_card(0) // Jack of Spades
+            .expect("should be allowed to play Jack of Spades as leading card is also a Jack");
+        game_state
+            .play_card(0) // Ace of Diamonds
+            .expect("should be allowed to any card as the player does not have a Jack");
+    }
+
+    /// See https://github.com/bcheidemann/skat_engine_rs/issues/2
+    #[test]
+    pub fn regression_2_suit() {
+        let skat = [Card!(Jack of Hearts), Card!(7 of Clubs)];
+        let hand1 = [
+            Card!(Jack of Clubs),
+            Card!(Ace of Spades),
+            Card!(Jack of Diamonds),
+            Card!(10 of Diamonds),
+            Card!(King of Diamonds),
+            Card!(Queen of Diamonds),
+            Card!(9 of Diamonds),
+            Card!(8 of Diamonds),
+            Card!(7 of Diamonds),
+            Card!(10 of Clubs),
+        ];
+        let hand2 = [
+            Card!(Jack of Spades),
+            Card!(King of Clubs),
+            Card!(Queen of Clubs),
+            Card!(Ace of Hearts),
+            Card!(10 of Hearts),
+            Card!(King of Hearts),
+            Card!(Queen of Hearts),
+            Card!(9 of Hearts),
+            Card!(8 of Hearts),
+            Card!(7 of Hearts),
+        ];
+        let hand3 = [
+            Card!(Ace of Diamonds),
+            Card!(10 of Spades),
+            Card!(King of Spades),
+            Card!(Queen of Spades),
+            Card!(9 of Spades),
+            Card!(8 of Spades),
+            Card!(7 of Spades),
+            Card!(Ace of Clubs),
+            Card!(9 of Clubs),
+            Card!(8 of Clubs),
+        ];
+        let mut game_state = GameState::new(
+            Game::Suit(SuitGame {
+                trump_suit: Suit::Hearts,
+            }),
+            skat,
+            [
+                PlayerState::new(hand1.into()),
+                PlayerState::new(hand2.into()),
+                PlayerState::new(hand3.into()),
+            ],
+            PlayerId::FIRST,
+            PlayerId::FIRST,
+        );
+
+        game_state.play_card(0).unwrap(); // Jack of Clubs
+        assert!(
+            game_state
+                .play_card(1) // King of Clubs
+                .is_err(),
+            "should not be allowed to play King of Clubs because player has a Jack of Spades"
+        );
+        game_state
+            .play_card(0) // Jack of Spades
+            .expect("should be allowed to play Jack of Spades as leading card is also a Jack");
+        game_state
+            .play_card(0) // Ace of Diamonds
+            .expect("should be allowed to any card as the player does not have a Jack or any other trumps");
+    }
 }

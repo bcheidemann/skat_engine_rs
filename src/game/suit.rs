@@ -14,10 +14,10 @@ impl SuitGame {
     }
 
     pub fn card_follows_suit(&self, leading_card: Card, card: Card) -> bool {
-        if self.card_is_trump(card) {
-            self.card_is_trump(leading_card)
-        } else {
-            card.suit == leading_card.suit
+        match (self.card_is_trump(leading_card), self.card_is_trump(card)) {
+            (true, true) => true,
+            (true, false) | (false, true) => false,
+            (false, false) => card.suit == leading_card.suit,
         }
     }
 }
