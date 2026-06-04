@@ -66,7 +66,9 @@ impl GameState {
     // TODO: Return sensible result
     #[allow(clippy::result_unit_err)]
     pub fn play_card(&mut self, card_idx: usize) -> Result<(), ()> {
-        let played_card = self.current_player().hand.cards[card_idx];
+        let Some(played_card) = self.current_player().hand.cards.get(card_idx).cloned() else {
+            return Err(());
+        };
 
         // SAFETY: `&self.current_trick` is valid for reads as it is non-null,
         //         it's memory range is entirely contained within the bounds of

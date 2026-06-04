@@ -31,7 +31,7 @@ impl CardDisplayExt for Card {
         let c = self.char();
         match self.suit {
             Suit::Diamonds | Suit::Hearts => Stylize::red(c),
-            Suit::Spades | Suit::Clubs => Stylize::black(c),
+            Suit::Spades | Suit::Clubs => Stylize::white(c),
         }
     }
 }

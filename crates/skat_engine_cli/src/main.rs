@@ -29,11 +29,7 @@ fn main() -> io::Result<()> {
         PlayerState::new(hand3.sorted(&game)),
     ];
 
-    let mut state = GameState::new(game, skat, players, PlayerId::FIRST, PlayerId::FIRST);
-    state.play_card(0).unwrap();
-    state.play_card(0).unwrap();
-    state.play_card(0).unwrap();
-    state.play_card(0).unwrap();
+    let state = GameState::new(game, skat, players, PlayerId::FIRST, PlayerId::FIRST);
 
     let mut app = App::new(state);
 
@@ -45,6 +41,7 @@ pub struct App {
     state: GameState,
     focused_card: Option<usize>,
     show_help: bool,
+    error: Option<String>,
     exit: bool,
 }
 
@@ -54,6 +51,7 @@ impl App {
             state,
             focused_card: None,
             show_help: false,
+            error: None,
             exit: false,
         }
     }
@@ -90,6 +88,7 @@ impl App {
             KeyCode::Right => self.focus_next_card(),
             KeyCode::Up => self.focus_card(),
             KeyCode::Down => self.unfocus_card(),
+            KeyCode::Char(' ') => self.play_card(),
             KeyCode::Esc => self.hide_help(),
             KeyCode::Char('?') => self.show_help(),
             _ => {}
@@ -100,7 +99,16 @@ impl App {
         self.exit = true;
     }
 
+    fn clear_error(&mut self) {
+        self.error = None;
+    }
+
     fn focus_next_card(&mut self) {
+        self.clear_error();
+        if self.state.current_player().hand.cards.is_empty() {
+            self.focused_card = None;
+            return;
+        }
         if let Some(focused_card) = self.focused_card {
             self.focused_card =
                 Some((focused_card + 1) % self.state.current_player().hand.cards.len());
@@ -110,25 +118,63 @@ impl App {
     }
 
     fn focus_prev_card(&mut self) {
+        self.clear_error();
+        if self.state.current_player().hand.cards.is_empty() {
+            self.focused_card = None;
+            return;
+        }
         if let Some(focused_card) = self.focused_card {
             if focused_card > 0 {
                 self.focused_card = Some(focused_card - 1);
             } else {
-                self.focused_card = Some(self.state.current_player().hand.cards.len() - 1);
+                self.focused_card = Some(
+                    self.state
+                        .current_player()
+                        .hand
+                        .cards
+                        .len()
+                        .saturating_sub(1),
+                );
             };
         } else {
-            self.focused_card = Some(self.state.current_player().hand.cards.len() - 1);
+            self.focused_card = Some(
+                self.state
+                    .current_player()
+                    .hand
+                    .cards
+                    .len()
+                    .saturating_sub(1),
+            );
         }
     }
 
     fn focus_card(&mut self) {
+        self.clear_error();
+        if self.state.current_player().hand.cards.is_empty() {
+            self.focused_card = None;
+            return;
+        }
         if self.focused_card.is_none() {
             self.focused_card = Some(0);
         }
     }
 
     fn unfocus_card(&mut self) {
+        self.clear_error();
         self.focused_card = None;
+    }
+
+    fn play_card(&mut self) {
+        let Some(focused_card) = self.focused_card else {
+            self.error = Some("Please select a card to play.".into());
+            return;
+        };
+
+        if let Err(_) = self.state.play_card(focused_card) {
+            self.error = Some("Invalid card.".into());
+        } else {
+            self.focused_card = None;
+        }
     }
 
     fn show_help(&mut self) {
@@ -155,6 +201,7 @@ impl Widget for &App {
             "<Q> ".blue().bold(),
         ]);
         let block = Block::bordered()
+            .on_black()
             .title(title.centered())
             .title_bottom(instructions.centered())
             .border_set(border::THICK);
@@ -166,6 +213,7 @@ impl Widget for &App {
             Constraint::Length(1),
             Constraint::Length(3),
             Constraint::Length(2),
+            Constraint::Length(1),
             Constraint::Length(1),
             Constraint::Length(1),
         ])
@@ -186,10 +234,22 @@ impl Widget for &App {
             Text::from("-".gray()).centered().render(layout[1], buf);
         }
 
-        if let Some(card) = self.state.current_trick().top_card() {
-            Text::from(card.display_tui())
+        let current_trick = self.state.current_trick();
+        if current_trick.cards().is_empty() {
+            Text::from(Stylize::gray(Stylize::dim("🂠")))
                 .centered()
                 .render(layout[2], buf);
+        } else {
+            let current_trick: Line = Itertools::intersperse(
+                current_trick
+                    .cards()
+                    .iter()
+                    .map(CardDisplayExt::display_tui),
+                " ".into(),
+            )
+            .collect();
+
+            Text::from(current_trick).centered().render(layout[2], buf);
         }
 
         Text::from(format!(
@@ -207,10 +267,10 @@ impl Widget for &App {
                 .iter()
                 .enumerate()
                 .map(|(idx, card)| {
-                    if self.focused_card.is_none() || Some(idx) == self.focused_card {
+                    if Some(idx) == self.focused_card {
                         CardDisplayExt::display_tui(card)
                     } else {
-                        card.char().gray()
+                        Stylize::dim(CardDisplayExt::display_tui(card))
                     }
                 }),
             " ".into(),
@@ -220,6 +280,12 @@ impl Widget for &App {
         Text::from(vec![current_player_cards])
             .centered()
             .render(layout[4], buf);
+
+        if let Some(error) = &self.error {
+            Text::from(Stylize::on_light_red(format!(" Error: {error} ")))
+                .centered()
+                .render(layout[5], buf);
+        }
     }
 }
 
@@ -233,6 +299,7 @@ impl Widget for &KeybindingsMenu {
     {
         let title = Line::from(" Keybindings ".bold());
         let block = Block::bordered()
+            .on_black()
             .title(title.centered())
             .border_set(border::THICK);
         let inner_area = block.inner(area);
