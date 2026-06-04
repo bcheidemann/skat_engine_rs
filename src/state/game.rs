@@ -120,7 +120,11 @@ impl GameState {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Card, game::grand::GrandGame};
+    use crate::{
+        Card,
+        game::{grand::GrandGame, suit::SuitGame},
+        suit::Suit,
+    };
 
     use super::*;
 
@@ -222,5 +226,123 @@ mod tests {
         assert_eq!(game_state.player(PlayerId::FIRST).hand.cards.len(), 8);
         assert_eq!(game_state.player(PlayerId::SECOND).hand.cards.len(), 8);
         assert_eq!(game_state.player(PlayerId::THIRD).hand.cards.len(), 8);
+    }
+
+    /// See https://github.com/bcheidemann/skat_engine_rs/issues/1
+    #[test]
+    pub fn regression_1_grand() {
+        let skat = [Card!(Jack of Clubs), Card!(7 of Clubs)];
+        let hand1 = [
+            Card!(Jack of Hearts),
+            Card!(Ace of Diamonds),
+            Card!(10 of Diamonds),
+            Card!(King of Diamonds),
+            Card!(Queen of Diamonds),
+            Card!(9 of Diamonds),
+            Card!(8 of Diamonds),
+            Card!(7 of Diamonds),
+            Card!(Ace of Clubs),
+            Card!(10 of Clubs),
+        ];
+        let hand2 = [
+            Card!(Jack of Diamonds),
+            Card!(Ace of Hearts),
+            Card!(10 of Hearts),
+            Card!(King of Hearts),
+            Card!(Queen of Hearts),
+            Card!(9 of Hearts),
+            Card!(8 of Hearts),
+            Card!(7 of Hearts),
+            Card!(King of Clubs),
+            Card!(Queen of Clubs),
+        ];
+        let hand3 = [
+            Card!(Jack of Spades),
+            Card!(Ace of Spades),
+            Card!(10 of Spades),
+            Card!(King of Spades),
+            Card!(Queen of Spades),
+            Card!(9 of Spades),
+            Card!(8 of Spades),
+            Card!(7 of Spades),
+            Card!(9 of Clubs),
+            Card!(8 of Clubs),
+        ];
+        let mut game_state = GameState::new(
+            Game::Grand(GrandGame {}),
+            skat,
+            [
+                PlayerState::new(hand1.into()),
+                PlayerState::new(hand2.into()),
+                PlayerState::new(hand3.into()),
+            ],
+            PlayerId::FIRST,
+            PlayerId::FIRST,
+        );
+
+        game_state.play_card(1).unwrap(); // Ace of Diamonds
+        game_state
+            .play_card(1) // Ace of Hearts
+            .expect("should be allowed to break suit, since they only have a Jack in Diamonds");
+    }
+
+    /// See https://github.com/bcheidemann/skat_engine_rs/issues/1
+    #[test]
+    pub fn regression_1_suit() {
+        let skat = [Card!(Jack of Clubs), Card!(7 of Clubs)];
+        let hand1 = [
+            Card!(Jack of Hearts),
+            Card!(Ace of Diamonds),
+            Card!(10 of Diamonds),
+            Card!(King of Diamonds),
+            Card!(Queen of Diamonds),
+            Card!(9 of Diamonds),
+            Card!(8 of Diamonds),
+            Card!(7 of Diamonds),
+            Card!(Ace of Clubs),
+            Card!(10 of Clubs),
+        ];
+        let hand2 = [
+            Card!(Jack of Diamonds),
+            Card!(Ace of Hearts),
+            Card!(10 of Hearts),
+            Card!(King of Hearts),
+            Card!(Queen of Hearts),
+            Card!(9 of Hearts),
+            Card!(8 of Hearts),
+            Card!(7 of Hearts),
+            Card!(King of Clubs),
+            Card!(Queen of Clubs),
+        ];
+        let hand3 = [
+            Card!(Jack of Spades),
+            Card!(Ace of Spades),
+            Card!(10 of Spades),
+            Card!(King of Spades),
+            Card!(Queen of Spades),
+            Card!(9 of Spades),
+            Card!(8 of Spades),
+            Card!(7 of Spades),
+            Card!(9 of Clubs),
+            Card!(8 of Clubs),
+        ];
+        let mut game_state = GameState::new(
+            Game::Suit(SuitGame {
+                trump_suit: Suit::Clubs,
+            }),
+            skat,
+            [
+                PlayerState::new(hand1.into()),
+                PlayerState::new(hand2.into()),
+                PlayerState::new(hand3.into()),
+            ],
+            PlayerId::FIRST,
+            PlayerId::FIRST,
+        );
+
+        game_state.play_card(1).unwrap(); // Ace of Diamonds
+        game_state
+            .play_card(1) // Ace of Hearts
+            .expect("should be allowed to break suit, since they only have a Jack in Diamonds");
     }
 }
