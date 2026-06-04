@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 
 use crate::game::GameKind;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Rank {
     N7,
     N8,
@@ -46,7 +46,7 @@ impl Rank {
     /// Compares the rank to another rank, returning their relative ordering for
     /// the current game kind.
     #[inline(always)]
-    pub fn compare(&self, other: &Rank, game_kind: GameKind) -> Ordering {
+    pub fn compare(&self, other: Rank, game_kind: GameKind) -> Ordering {
         self.raw_rank(game_kind).cmp(&other.raw_rank(game_kind))
     }
 
@@ -92,7 +92,7 @@ macro_rules! Rank {
         $crate::rank::Rank::N9
     };
     (10) => {
-        $crate::rank::Rank::N9
+        $crate::rank::Rank::N10
     };
     (Jack) => {
         $crate::rank::Rank::Jack

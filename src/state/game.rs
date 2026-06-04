@@ -66,9 +66,11 @@ impl GameState {
     // TODO: Return sensible result
     #[allow(clippy::result_unit_err)]
     pub fn play_card(&mut self, card_idx: usize) -> Result<(), ()> {
+        let current_player_hand = &self.current_player().hand.cards;
         let Some(played_card) = self.current_player().hand.cards.get(card_idx).cloned() else {
             return Err(());
         };
+        dbg!(played_card);
 
         // SAFETY: `&self.current_trick` is valid for reads as it is non-null,
         //         it's memory range is entirely contained within the bounds of
@@ -82,29 +84,38 @@ impl GameState {
         // SAFETY: It is safe fine to move `trick` out of `&self.current_trick`
         //         temporarily, as the field is guaranteed to be reassigned
         //         before any further accesses to `self.current_trick` occur.
-        let (trick, outcome) = trick.try_play_card(&self.game, self.current_player_id, played_card);
+        let (trick, outcome) = trick.try_play_card(
+            &self.game,
+            self.current_player_id,
+            current_player_hand,
+            played_card,
+        );
 
         // SAFETY: See above.
         unsafe { std::ptr::write(&mut self.current_trick, trick) };
 
         match outcome {
-            PlayCardOutcome::CardPlayed => {}
-            PlayCardOutcome::InvalidCard => return Err(()),
+            PlayCardOutcome::CardPlayed => {
+                self.current_player_mut().hand.cards.remove(card_idx);
+                self.current_player_id = self.current_player_id.next();
+
+                Ok(())
+            }
+            PlayCardOutcome::InvalidCard => Err(()),
             PlayCardOutcome::TrickComplete(won_trick) => {
+                self.current_player_mut().hand.cards.remove(card_idx);
+                self.current_player_id = won_trick.winning_player;
                 self.last_won_trick = Some(won_trick);
+
                 if won_trick.winning_player == self.soloist {
                     self.soloist_tricks.push(won_trick);
                 } else {
                     self.defender_tricks.push(won_trick);
                 }
+
+                Ok(())
             }
         }
-
-        self.current_player_mut().hand.cards.remove(card_idx);
-
-        self.current_player_id = self.current_player_id.next();
-
-        Ok(())
     }
 }
 
@@ -144,7 +155,7 @@ mod tests {
         let hand3 = [
             Card!(Jack of Spades),
             Card!(Queen of Clubs),
-            Card!(9 of Clubs),
+            Card!(10 of Clubs),
             Card!(7 of Clubs),
             Card!(Queen of Hearts),
             Card!(7 of Hearts),
@@ -165,47 +176,52 @@ mod tests {
             PlayerId::FIRST,
         );
 
+        assert_eq!(game_state.current_player_id(), PlayerId::FIRST);
         assert_eq!(game_state.current_trick.cards().len(), 0);
         assert_eq!(game_state.player(PlayerId::FIRST).hand.cards.len(), 10);
         assert_eq!(game_state.player(PlayerId::SECOND).hand.cards.len(), 10);
         assert_eq!(game_state.player(PlayerId::THIRD).hand.cards.len(), 10);
 
-        game_state.play_card(0).unwrap();
+        game_state.play_card(0).unwrap(); // Jack of Clubs
+        assert_eq!(game_state.current_player_id(), PlayerId::SECOND);
         assert_eq!(game_state.current_trick.cards().len(), 1);
         assert_eq!(game_state.player(PlayerId::FIRST).hand.cards.len(), 9);
         assert_eq!(game_state.player(PlayerId::SECOND).hand.cards.len(), 10);
         assert_eq!(game_state.player(PlayerId::THIRD).hand.cards.len(), 10);
 
-        game_state.play_card(0).unwrap();
+        game_state.play_card(1).unwrap(); // Jack of Diamonds
+        assert_eq!(game_state.current_player_id(), PlayerId::THIRD);
         assert_eq!(game_state.current_trick.cards().len(), 2);
         assert_eq!(game_state.player(PlayerId::FIRST).hand.cards.len(), 9);
         assert_eq!(game_state.player(PlayerId::SECOND).hand.cards.len(), 9);
         assert_eq!(game_state.player(PlayerId::THIRD).hand.cards.len(), 10);
 
-        game_state.play_card(0).unwrap();
+        game_state.play_card(0).unwrap(); // Jack of Spades
+        assert_eq!(game_state.current_player_id(), PlayerId::FIRST);
         assert_eq!(game_state.current_trick.cards().len(), 0);
         assert_eq!(game_state.player(PlayerId::FIRST).hand.cards.len(), 9);
         assert_eq!(game_state.player(PlayerId::SECOND).hand.cards.len(), 9);
         assert_eq!(game_state.player(PlayerId::THIRD).hand.cards.len(), 9);
 
-        game_state.play_card(0).unwrap();
+        game_state.play_card(2).unwrap(); // 8 of Clubs
+        assert_eq!(game_state.current_player_id(), PlayerId::SECOND);
         assert_eq!(game_state.current_trick.cards().len(), 1);
         assert_eq!(game_state.player(PlayerId::FIRST).hand.cards.len(), 8);
         assert_eq!(game_state.player(PlayerId::SECOND).hand.cards.len(), 9);
         assert_eq!(game_state.player(PlayerId::THIRD).hand.cards.len(), 9);
 
-        game_state.play_card(0).unwrap();
+        game_state.play_card(1).unwrap(); // 9 of Clubs
+        assert_eq!(game_state.current_player_id(), PlayerId::THIRD);
         assert_eq!(game_state.current_trick.cards().len(), 2);
         assert_eq!(game_state.player(PlayerId::FIRST).hand.cards.len(), 8);
         assert_eq!(game_state.player(PlayerId::SECOND).hand.cards.len(), 8);
         assert_eq!(game_state.player(PlayerId::THIRD).hand.cards.len(), 9);
 
-        game_state.play_card(0).unwrap();
+        game_state.play_card(1).unwrap(); // 10 of Clubs
+        assert_eq!(game_state.current_player_id(), PlayerId::THIRD); // Player 3 won the trick
         assert_eq!(game_state.current_trick.cards().len(), 0);
         assert_eq!(game_state.player(PlayerId::FIRST).hand.cards.len(), 8);
         assert_eq!(game_state.player(PlayerId::SECOND).hand.cards.len(), 8);
         assert_eq!(game_state.player(PlayerId::THIRD).hand.cards.len(), 8);
-
-        panic!("{game_state:#?}");
     }
 }

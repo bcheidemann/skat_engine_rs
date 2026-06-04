@@ -1,6 +1,6 @@
 use crate::{game::Game, rank::Rank, suit::Suit};
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Card {
     pub rank: Rank,
     pub suit: Suit,

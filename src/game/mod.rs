@@ -1,4 +1,8 @@
-use crate::game::{grand::GrandGame, null::NullGame, suit::SuitGame};
+use crate::{
+    card::Card,
+    game::{grand::GrandGame, null::NullGame, suit::SuitGame},
+    rules::GameRules,
+};
 
 pub mod grand;
 pub mod null;
@@ -25,6 +29,24 @@ impl Game {
             Game::Suit(_) => GameKind::Suit,
             Game::Grand(_) => GameKind::Grand,
             Game::Null(_) => GameKind::Null,
+        }
+    }
+}
+
+impl GameRules for Game {
+    fn can_play_card(&self, trick: &[Card], hand: &[Card], card: Card) -> bool {
+        match self {
+            Game::Suit(suit_game) => suit_game.can_play_card(trick, hand, card),
+            Game::Grand(grand_game) => grand_game.can_play_card(trick, hand, card),
+            Game::Null(null_game) => null_game.can_play_card(trick, hand, card),
+        }
+    }
+
+    fn card_wins_trick(&self, trick: &[Card], card: Card) -> bool {
+        match self {
+            Game::Suit(suit_game) => suit_game.card_wins_trick(trick, card),
+            Game::Grand(grand_game) => grand_game.card_wins_trick(trick, card),
+            Game::Null(null_game) => null_game.card_wins_trick(trick, card),
         }
     }
 }

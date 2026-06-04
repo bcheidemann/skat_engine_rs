@@ -68,7 +68,7 @@ fn make_suit_game_sorter(game: &SuitGame) -> impl Fn(&Card, &Card) -> Ordering {
         }
 
         if a.suit == b.suit {
-            return b.rank.compare(&a.rank, GameKind::Grand);
+            return b.rank.compare(a.rank, GameKind::Grand);
         }
 
         black_red_suit_sorter(a.suit, b.suit)
@@ -91,7 +91,7 @@ fn make_grand_game_sorter(_: &GrandGame) -> impl Fn(&Card, &Card) -> Ordering {
         }
 
         if a.suit == b.suit {
-            return b.rank.compare(&a.rank, GameKind::Grand);
+            return b.rank.compare(a.rank, GameKind::Grand);
         }
 
         black_red_suit_sorter(a.suit, b.suit)
@@ -101,7 +101,7 @@ fn make_grand_game_sorter(_: &GrandGame) -> impl Fn(&Card, &Card) -> Ordering {
 fn make_null_game_sorter(_: &NullGame) -> impl Fn(&Card, &Card) -> Ordering {
     |a, b| {
         if a.suit == b.suit {
-            return b.rank.compare(&a.rank, GameKind::Null);
+            return b.rank.compare(a.rank, GameKind::Null);
         }
 
         black_red_suit_sorter(a.suit, b.suit)

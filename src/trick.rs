@@ -1,4 +1,4 @@
-use crate::{card::Card, game::Game, state::player::PlayerId};
+use crate::{card::Card, game::Game, rules::GameRules, state::player::PlayerId};
 
 #[derive(Clone, Debug)]
 pub struct Trick {
@@ -26,8 +26,9 @@ impl Trick {
 
     pub fn try_play_card(
         mut self,
-        _game: &Game,
+        game: &Game,
         player: PlayerId,
+        hand: &[Card],
         card: Card,
     ) -> (Self, PlayCardOutcome) {
         debug_assert!(self.cards.len() < 3, "overflowed the capacity of the trick");
@@ -40,7 +41,14 @@ impl Trick {
 
         debug_assert!(!self.winning_player.is_none());
 
-        // TODO: Check if this is a valid card to play
+        if !game.can_play_card(&self.cards, hand, card) {
+            return (self, PlayCardOutcome::InvalidCard);
+        }
+
+        if game.card_wins_trick(&self.cards, card) {
+            self.winning_player = player;
+        }
+
         self.cards.push(card);
 
         if self.cards.len() == 3 {
