@@ -10,12 +10,10 @@ pub struct GameState {
     game: Game,
     _skat: [Card; 2],
     players: [PlayerState; 3],
-    soloist_tricks: Vec<WonTrick>,
-    defender_tricks: Vec<WonTrick>,
-    last_won_trick: Option<WonTrick>,
+    tricks_won: Vec<WonTrick>,
     current_trick: Trick,
     current_player_id: PlayerId,
-    soloist: PlayerId,
+    _soloist: PlayerId,
 }
 
 impl GameState {
@@ -30,17 +28,15 @@ impl GameState {
             game,
             _skat: skat,
             players,
-            soloist_tricks: Vec::with_capacity(10),
-            defender_tricks: Vec::with_capacity(10),
-            last_won_trick: None,
+            tricks_won: Vec::with_capacity(10),
             current_trick: Trick::empty(),
             current_player_id: forehand,
-            soloist,
+            _soloist: soloist,
         }
     }
 
     pub fn last_won_trick(&self) -> Option<WonTrick> {
-        self.last_won_trick
+        self.tricks_won.last().cloned()
     }
 
     pub fn current_trick(&self) -> &Trick {
@@ -104,13 +100,7 @@ impl GameState {
             PlayCardOutcome::TrickComplete(won_trick) => {
                 self.current_player_mut().hand.cards.remove(card_idx);
                 self.current_player_id = won_trick.winning_player;
-                self.last_won_trick = Some(won_trick);
-
-                if won_trick.winning_player == self.soloist {
-                    self.soloist_tricks.push(won_trick);
-                } else {
-                    self.defender_tricks.push(won_trick);
-                }
+                self.tricks_won.push(won_trick);
 
                 Ok(())
             }
