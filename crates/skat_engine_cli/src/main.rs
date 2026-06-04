@@ -170,6 +170,8 @@ impl App {
             return;
         };
 
+        let focused_card = self.state.current_player().hand.cards[focused_card];
+
         if let Err(_) = self.state.play_card(focused_card) {
             self.error = Some("Invalid card.".into());
         } else {

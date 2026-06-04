@@ -61,10 +61,14 @@ impl GameState {
 
     // TODO: Return sensible result
     #[allow(clippy::result_unit_err)]
-    pub fn play_card(&mut self, card_idx: usize) -> Result<(), ()> {
+    pub fn play_card(&mut self, card: Card) -> Result<(), ()> {
         let current_player_hand = &self.current_player().hand.cards;
-        let Some(played_card) = self.current_player().hand.cards.get(card_idx).cloned() else {
-            return Err(());
+        let Some((played_card_idx, _)) = current_player_hand
+            .iter()
+            .enumerate()
+            .find(|(_, card_in_hand)| **card_in_hand == card)
+        else {
+            return Ok(());
         };
 
         // SAFETY: `&self.current_trick` is valid for reads as it is non-null,
@@ -83,7 +87,7 @@ impl GameState {
             &self.game,
             self.current_player_id,
             current_player_hand,
-            played_card,
+            card,
         );
 
         // SAFETY: See above.
@@ -91,14 +95,14 @@ impl GameState {
 
         match outcome {
             PlayCardOutcome::CardPlayed => {
-                self.current_player_mut().hand.cards.remove(card_idx);
+                self.current_player_mut().hand.cards.remove(played_card_idx);
                 self.current_player_id = self.current_player_id.next();
 
                 Ok(())
             }
             PlayCardOutcome::InvalidCard => Err(()),
             PlayCardOutcome::TrickComplete(won_trick) => {
-                self.current_player_mut().hand.cards.remove(card_idx);
+                self.current_player_mut().hand.cards.remove(played_card_idx);
                 self.current_player_id = won_trick.winning_player;
                 self.tricks_won.push(won_trick);
 
@@ -175,42 +179,42 @@ mod tests {
         assert_eq!(game_state.player(PlayerId::SECOND).hand.cards.len(), 10);
         assert_eq!(game_state.player(PlayerId::THIRD).hand.cards.len(), 10);
 
-        game_state.play_card(0).unwrap(); // Jack of Clubs
+        game_state.play_card(Card!(Jack of Clubs)).unwrap();
         assert_eq!(game_state.current_player_id(), PlayerId::SECOND);
         assert_eq!(game_state.current_trick.cards().len(), 1);
         assert_eq!(game_state.player(PlayerId::FIRST).hand.cards.len(), 9);
         assert_eq!(game_state.player(PlayerId::SECOND).hand.cards.len(), 10);
         assert_eq!(game_state.player(PlayerId::THIRD).hand.cards.len(), 10);
 
-        game_state.play_card(1).unwrap(); // Jack of Diamonds
+        game_state.play_card(Card!(Jack of Diamonds)).unwrap();
         assert_eq!(game_state.current_player_id(), PlayerId::THIRD);
         assert_eq!(game_state.current_trick.cards().len(), 2);
         assert_eq!(game_state.player(PlayerId::FIRST).hand.cards.len(), 9);
         assert_eq!(game_state.player(PlayerId::SECOND).hand.cards.len(), 9);
         assert_eq!(game_state.player(PlayerId::THIRD).hand.cards.len(), 10);
 
-        game_state.play_card(0).unwrap(); // Jack of Spades
+        game_state.play_card(Card!(Jack of Spades)).unwrap();
         assert_eq!(game_state.current_player_id(), PlayerId::FIRST);
         assert_eq!(game_state.current_trick.cards().len(), 0);
         assert_eq!(game_state.player(PlayerId::FIRST).hand.cards.len(), 9);
         assert_eq!(game_state.player(PlayerId::SECOND).hand.cards.len(), 9);
         assert_eq!(game_state.player(PlayerId::THIRD).hand.cards.len(), 9);
 
-        game_state.play_card(2).unwrap(); // 8 of Clubs
+        game_state.play_card(Card!(8 of Clubs)).unwrap();
         assert_eq!(game_state.current_player_id(), PlayerId::SECOND);
         assert_eq!(game_state.current_trick.cards().len(), 1);
         assert_eq!(game_state.player(PlayerId::FIRST).hand.cards.len(), 8);
         assert_eq!(game_state.player(PlayerId::SECOND).hand.cards.len(), 9);
         assert_eq!(game_state.player(PlayerId::THIRD).hand.cards.len(), 9);
 
-        game_state.play_card(1).unwrap(); // 9 of Clubs
+        game_state.play_card(Card!(9 of Clubs)).unwrap();
         assert_eq!(game_state.current_player_id(), PlayerId::THIRD);
         assert_eq!(game_state.current_trick.cards().len(), 2);
         assert_eq!(game_state.player(PlayerId::FIRST).hand.cards.len(), 8);
         assert_eq!(game_state.player(PlayerId::SECOND).hand.cards.len(), 8);
         assert_eq!(game_state.player(PlayerId::THIRD).hand.cards.len(), 9);
 
-        game_state.play_card(1).unwrap(); // 10 of Clubs
+        game_state.play_card(Card!(10 of Clubs)).unwrap();
         assert_eq!(game_state.current_player_id(), PlayerId::THIRD); // Player 3 won the trick
         assert_eq!(game_state.current_trick.cards().len(), 0);
         assert_eq!(game_state.player(PlayerId::FIRST).hand.cards.len(), 8);
@@ -270,9 +274,9 @@ mod tests {
             PlayerId::FIRST,
         );
 
-        game_state.play_card(1).unwrap(); // Ace of Diamonds
+        game_state.play_card(Card!(Ace of Diamonds)).unwrap();
         game_state
-            .play_card(1) // Ace of Hearts
+            .play_card(Card!(Ace of Hearts))
             .expect("should be allowed to break suit, since they only have a Jack in Diamonds");
     }
 
@@ -330,9 +334,9 @@ mod tests {
             PlayerId::FIRST,
         );
 
-        game_state.play_card(1).unwrap(); // Ace of Diamonds
+        game_state.play_card(Card!(Ace of Diamonds)).unwrap();
         game_state
-            .play_card(1) // Ace of Hearts
+            .play_card(Card!(Ace of Hearts))
             .expect("should be allowed to break suit, since they only have a Jack in Diamonds");
     }
 
@@ -388,18 +392,16 @@ mod tests {
             PlayerId::FIRST,
         );
 
-        game_state.play_card(0).unwrap(); // Jack of Clubs
+        game_state.play_card(Card!(Jack of Clubs)).unwrap();
         assert!(
-            game_state
-                .play_card(1) // King of Clubs
-                .is_err(),
+            game_state.play_card(Card!(King of Clubs)).is_err(),
             "should not be allowed to play King of Clubs because player has a Jack of Spades"
         );
         game_state
-            .play_card(0) // Jack of Spades
+            .play_card(Card!(Jack of Spades))
             .expect("should be allowed to play Jack of Spades as leading card is also a Jack");
         game_state
-            .play_card(0) // Ace of Diamonds
+            .play_card(Card!(Ace of Diamonds))
             .expect("should be allowed to any card as the player does not have a Jack");
     }
 
@@ -457,18 +459,16 @@ mod tests {
             PlayerId::FIRST,
         );
 
-        game_state.play_card(0).unwrap(); // Jack of Clubs
+        game_state.play_card(Card!(Jack of Clubs)).unwrap();
         assert!(
-            game_state
-                .play_card(1) // King of Clubs
-                .is_err(),
+            game_state.play_card(Card!(King of Clubs)).is_err(),
             "should not be allowed to play King of Clubs because player has a Jack of Spades"
         );
         game_state
-            .play_card(0) // Jack of Spades
+            .play_card(Card!(Jack of Spades))
             .expect("should be allowed to play Jack of Spades as leading card is also a Jack");
-        game_state
-            .play_card(0) // Ace of Diamonds
-            .expect("should be allowed to any card as the player does not have a Jack or any other trumps");
+        game_state.play_card(Card!(Ace of Diamonds)).expect(
+            "should be allowed to any card as the player does not have a Jack or any other trumps",
+        );
     }
 }
