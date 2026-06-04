@@ -70,7 +70,6 @@ impl GameState {
         let Some(played_card) = self.current_player().hand.cards.get(card_idx).cloned() else {
             return Err(());
         };
-        dbg!(played_card);
 
         // SAFETY: `&self.current_trick` is valid for reads as it is non-null,
         //         it's memory range is entirely contained within the bounds of
