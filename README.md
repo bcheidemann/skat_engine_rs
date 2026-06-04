@@ -9,29 +9,5 @@ There are two main parts of this project:
 
 ## `skat_engine_cli`
 
-Terminal output:
+[skat_engine_cli_demo.webm](https://github.com/user-attachments/assets/df845c60-2a3f-4e93-95aa-cbd0f310f286)
 
-```
-┏━━━━━━━━━━━━━━━━ Ben’s Skat Engine ━━━━━━━━━━━━━━━━┓
-┃                                                   ┃
-┃                                                   ┃
-┃                                                   ┃
-┃                                                   ┃
-┃                                                   ┃
-┃                                                   ┃
-┃                    Last Trick                     ┃
-┃                      🂫 🃗 🃋                      ┃
-┃                                                   ┃
-┃                                                   ┃
-┃                         🂻                        ┃
-┃                                                   ┃
-┃                     Player #2                     ┃
-┃              🂱 🂾 🂹 🂸 🂮 🂨 🃁 🃈 🃇              ┃
-┃                                                   ┃
-┃                                                   ┃
-┃                                                   ┃
-┃                                                   ┃
-┃                                                   ┃
-┃                                                   ┃
-┗━━━━━━━━━━━━━━━━ Help <?> Quit <Q> ━━━━━━━━━━━━━━━━┛
-```
