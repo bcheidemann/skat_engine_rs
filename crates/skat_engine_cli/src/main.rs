@@ -12,6 +12,7 @@ use ratatui::{
     widgets::{Block, Paragraph, Widget},
 };
 use skat_engine::{
+    bot::{Bot, grand::GrandBot},
     game::{Game, grand::GrandGame},
     state::{
         game::GameState,
@@ -31,14 +32,17 @@ fn main() -> io::Result<()> {
 
     let state = GameState::new(game, skat, players, PlayerId::FIRST, PlayerId::FIRST);
 
-    let mut app = App::new(state);
+    let mut app = App::new(
+        state,
+        [None, Some(Box::new(GrandBot)), Some(Box::new(GrandBot))],
+    );
 
     ratatui::run(|terminal| app.run(terminal))
 }
 
-#[derive(Debug)]
 pub struct App {
     state: GameState,
+    bots: [Option<Box<dyn Bot>>; 3],
     focused_card: Option<usize>,
     show_help: bool,
     error: Option<String>,
@@ -46,9 +50,10 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(state: GameState) -> Self {
+    pub fn new(state: GameState, bots: [Option<Box<dyn Bot>>; 3]) -> Self {
         Self {
             state,
+            bots,
             focused_card: None,
             show_help: false,
             error: None,
@@ -59,6 +64,8 @@ impl App {
     /// runs the application's main loop until the user quits
     pub fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
         while !self.exit {
+            // TODO: Handle end of game (currently panics if game ends on bot turn)
+            while self.play_bot_turn() {}
             terminal.draw(|frame| self.draw(frame))?;
             self.handle_events()?;
         }
@@ -93,6 +100,17 @@ impl App {
             KeyCode::Char('?') => self.show_help(),
             _ => {}
         }
+    }
+
+    fn play_bot_turn(&mut self) -> bool {
+        let Some(bot) = &mut self.bots[self.state.current_player_id().into_inner()] else {
+            return false;
+        };
+        let card = bot.play_card(self.state.get_bot_context());
+        self.state
+            .play_card(card)
+            .expect("bot should play a valid move");
+        true
     }
 
     fn exit(&mut self) {
@@ -172,7 +190,7 @@ impl App {
 
         let focused_card = self.state.current_player().hand.cards[focused_card];
 
-        if let Err(_) = self.state.play_card(focused_card) {
+        if self.state.play_card(focused_card).is_err() {
             self.error = Some("Invalid card.".into());
         } else {
             self.focused_card = None;

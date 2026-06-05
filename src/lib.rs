@@ -1,5 +1,6 @@
 use crate::card::Card;
 
+pub mod bot;
 pub mod card;
 pub mod game;
 pub mod hand;

@@ -1,4 +1,5 @@
 use crate::{
+    bot::BotContext,
     card::Card,
     game::Game,
     state::player::{PlayerId, PlayerState},
@@ -13,7 +14,7 @@ pub struct GameState {
     tricks_won: Vec<WonTrick>,
     current_trick: Trick,
     current_player_id: PlayerId,
-    _soloist: PlayerId,
+    soloist: PlayerId,
 }
 
 impl GameState {
@@ -31,7 +32,7 @@ impl GameState {
             tricks_won: Vec::with_capacity(10),
             current_trick: Trick::empty(),
             current_player_id: forehand,
-            _soloist: soloist,
+            soloist,
         }
     }
 
@@ -57,6 +58,16 @@ impl GameState {
 
     fn current_player_mut(&mut self) -> &mut PlayerState {
         &mut self.players[self.current_player_id.into_inner()]
+    }
+
+    pub fn get_bot_context(&self) -> BotContext<'_> {
+        BotContext {
+            game: &self.game,
+            current_trick: &self.current_trick,
+            player_state: self.current_player(),
+            tricks_won: &self.tricks_won,
+            soloist: self.soloist,
+        }
     }
 
     // TODO: Return sensible result
