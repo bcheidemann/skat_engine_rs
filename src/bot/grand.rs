@@ -6,9 +6,6 @@ use crate::{
 
 pub struct GrandBot;
 
-#[derive(Default)]
-pub struct GrandBotContext;
-
 impl Bot for GrandBot {
     fn play_card(&mut self, ctx: BotContext<'_>) -> Card {
         let hand = &ctx.player_state.hand;
