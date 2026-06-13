@@ -16,6 +16,10 @@ impl Trick {
         }
     }
 
+    pub fn leading_card(&self) -> Option<Card> {
+        self.cards().first().cloned()
+    }
+
     pub fn top_card(&self) -> Option<Card> {
         self.cards().last().cloned()
     }
