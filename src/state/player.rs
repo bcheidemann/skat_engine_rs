@@ -40,14 +40,22 @@ impl PlayerId {
         self == Self::NONE
     }
 
+    /// Checks if the [PlayerId] is [PlayerId::NONE], and returns an [Option] of
+    /// non-none [PlayerId].
+    #[inline(always)]
+    pub fn into_option(self) -> Option<Self> {
+        if self.is_none() { None } else { Some(self) }
+    }
+
     #[inline(always)]
     pub fn next(self) -> Self {
-        debug_assert!(self != Self::NONE, "Cannot call next on PlayerId::NONE");
+        debug_assert!(self != Self::NONE);
         Self((self.0 + 1) % 3)
     }
 
     #[inline(always)]
     pub fn into_inner(self) -> usize {
+        debug_assert!(self != Self::NONE);
         self.0
     }
 }

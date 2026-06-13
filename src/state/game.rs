@@ -63,6 +63,7 @@ impl GameState {
     pub fn get_bot_context(&self) -> BotContext<'_> {
         BotContext {
             game: &self.game,
+            player_id: self.current_player_id,
             player_state: self.current_player(),
             current_trick: &self.current_trick,
             tricks_won: &self.tricks_won,

@@ -24,6 +24,10 @@ impl Trick {
         &self.cards
     }
 
+    pub fn currently_winning_player(&self) -> Option<PlayerId> {
+        self.winning_player.into_option()
+    }
+
     pub fn try_play_card(
         mut self,
         game: &Game,

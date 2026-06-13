@@ -1,3 +1,5 @@
+use std::{collections::HashSet, sync::LazyLock};
+
 use crate::card::Card;
 
 pub mod bot;
@@ -48,3 +50,5 @@ pub const DECK: [Card; 32] = [
     Card!(King of Clubs),
     Card!(Ace of Clubs),
 ];
+
+pub static ALL_CARDS_SET: LazyLock<HashSet<Card>> = LazyLock::new(|| HashSet::from(DECK));
