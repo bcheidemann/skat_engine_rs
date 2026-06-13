@@ -1,9 +1,13 @@
-use crate::{card::Card, game::GameKind, rank::Rank, rules::GameRules, suit::Suit};
+use crate::{
+    card::Card, game::GameKind, rank::Rank, rules::GameRules, state::game::GameState, suit::Suit,
+};
 
 /// A regular suit game. All jacks and each card of the chosen suit are trumps.
 /// The objective is for the soloist to win more than half the available points.
 #[derive(Clone, Debug)]
 pub struct SuitGame {
+    /// Whether the game is being played hand.
+    pub hand: bool,
     /// All jacks and each card of this suit are trups.
     pub trump_suit: Suit,
 }
@@ -104,5 +108,9 @@ impl GameRules for SuitGame {
                     (false, false) => trick_card.rank.compare(card.rank, GameKind::Suit).is_lt(),
                 },
             )
+    }
+
+    fn is_game_over(&self, game_state: &GameState) -> bool {
+        game_state.current_player().hand.cards.is_empty()
     }
 }

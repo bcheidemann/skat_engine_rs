@@ -67,10 +67,15 @@ impl From<PlayerId> for usize {
     }
 }
 
-impl From<usize> for PlayerId {
+impl TryFrom<usize> for PlayerId {
+    type Error = &'static str;
+
     #[inline(always)]
-    fn from(value: usize) -> Self {
-        debug_assert!(value < 3, "Player ID must be less than 3");
-        Self(value)
+    fn try_from(value: usize) -> Result<Self, Self::Error> {
+        if value < 3 {
+            Ok(Self(value))
+        } else {
+            Err("Player ID must be less than 3")
+        }
     }
 }

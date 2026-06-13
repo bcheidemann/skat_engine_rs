@@ -2,6 +2,7 @@ use crate::{
     card::Card,
     game::{grand::GrandGame, null::NullGame, suit::SuitGame},
     rules::GameRules,
+    state::game::GameState,
 };
 
 pub mod grand;
@@ -47,6 +48,14 @@ impl GameRules for Game {
             Game::Suit(suit_game) => suit_game.card_wins_trick(trick, card),
             Game::Grand(grand_game) => grand_game.card_wins_trick(trick, card),
             Game::Null(null_game) => null_game.card_wins_trick(trick, card),
+        }
+    }
+
+    fn is_game_over(&self, game_state: &GameState) -> bool {
+        match self {
+            Game::Suit(suit_game) => suit_game.is_game_over(game_state),
+            Game::Grand(grand_game) => grand_game.is_game_over(game_state),
+            Game::Null(null_game) => null_game.is_game_over(game_state),
         }
     }
 }

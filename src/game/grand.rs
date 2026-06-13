@@ -1,9 +1,12 @@
-use crate::{card::Card, game::GameKind, rank::Rank, rules::GameRules};
+use crate::{card::Card, game::GameKind, rank::Rank, rules::GameRules, state::game::GameState};
 
 /// A grand game. Only jacks are trumps. The objective is for the soloist to win
 /// more than half the available points.
 #[derive(Clone, Debug)]
-pub struct GrandGame {}
+pub struct GrandGame {
+    /// Whether the game is being played hand.
+    pub hand: bool,
+}
 
 impl GrandGame {
     pub fn card_is_trump(&self, card: Card) -> bool {
@@ -86,5 +89,9 @@ impl GameRules for GrandGame {
                     (false, false) => trick_card.rank.compare(card.rank, GameKind::Grand).is_lt(),
                 },
             )
+    }
+
+    fn is_game_over(&self, game_state: &GameState) -> bool {
+        game_state.current_player().hand.cards.is_empty()
     }
 }

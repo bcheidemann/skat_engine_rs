@@ -1,9 +1,12 @@
-use crate::{card::Card, game::GameKind, rules::GameRules};
+use crate::{card::Card, game::GameKind, rules::GameRules, state::game::GameState};
 
 /// A null game. There are no trumps. The objective is for the soloist to win
 /// zero tricks.
 #[derive(Clone, Debug)]
-pub struct NullGame {}
+pub struct NullGame {
+    /// Whether the game is being played hand.
+    pub hand: bool,
+}
 
 impl NullGame {
     pub fn card_follows_suit(&self, leading_card: Card, card: Card) -> bool {
@@ -55,5 +58,13 @@ impl GameRules for NullGame {
             .iter()
             .filter(|card| card.suit == leading_card.suit)
             .all(|trick_card| trick_card.rank.compare(card.rank, GameKind::Null).is_lt())
+    }
+
+    fn is_game_over(&self, game_state: &GameState) -> bool {
+        game_state.current_player().hand.cards.is_empty()
+            || game_state
+                .last_won_trick()
+                .map(|trick| trick.winning_player == game_state.soloist_player_id)
+                .unwrap_or(false)
     }
 }

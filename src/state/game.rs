@@ -2,19 +2,27 @@ use crate::{
     bot::BotContext,
     card::Card,
     game::Game,
+    rules::GameRules,
     state::player::{PlayerId, PlayerState},
-    trick::{PlayCardOutcome, Trick, WonTrick},
+    trick::{self, Trick, WonTrick},
 };
 
 #[derive(Clone, Debug)]
 pub struct GameState {
-    game: Game,
-    _skat: [Card; 2],
+    /// The game being played.
+    pub game: Game,
+    /// The contents of the skat.
+    pub skat: [Card; 2],
+    /// The state of each player in the game.
     players: [PlayerState; 3],
-    tricks_won: Vec<WonTrick>,
+    /// The tricks which have been won.
+    pub tricks_won: Vec<WonTrick>,
+    /// The current trick being played.
     current_trick: Trick,
-    current_player_id: PlayerId,
-    soloist: PlayerId,
+    /// The ID of the current player.
+    pub current_player_id: PlayerId,
+    /// The ID of the solo player.
+    pub soloist_player_id: PlayerId,
 }
 
 impl GameState {
@@ -27,13 +35,17 @@ impl GameState {
     ) -> Self {
         Self {
             game,
-            _skat: skat,
+            skat,
             players,
             tricks_won: Vec::with_capacity(10),
             current_trick: Trick::empty(),
             current_player_id: forehand,
-            soloist,
+            soloist_player_id: soloist,
         }
+    }
+
+    pub fn is_game_over(&self) -> bool {
+        self.game.is_game_over(self)
     }
 
     pub fn last_won_trick(&self) -> Option<WonTrick> {
@@ -48,8 +60,11 @@ impl GameState {
         &self.players[id.into_inner()]
     }
 
-    pub fn current_player_id(&self) -> PlayerId {
-        self.current_player_id
+    pub fn players(&self) -> impl Iterator<Item = (PlayerId, &PlayerState)> {
+        self.players
+            .iter()
+            .enumerate()
+            .map(|(idx, state)| (idx.try_into().unwrap(), state))
     }
 
     pub fn current_player(&self) -> &PlayerState {
@@ -67,25 +82,29 @@ impl GameState {
             player_state: self.current_player(),
             current_trick: &self.current_trick,
             tricks_won: &self.tricks_won,
-            soloist: self.soloist,
-            skat: if self.current_player_id() == self.soloist {
-                Some(self._skat)
+            soloist: self.soloist_player_id,
+            skat: if self.current_player_id == self.soloist_player_id {
+                Some(self.skat)
             } else {
                 None
             },
         }
     }
 
-    // TODO: Return sensible result
-    #[allow(clippy::result_unit_err)]
-    pub fn play_card(&mut self, card: Card) -> Result<(), ()> {
+    /// Attempts to play the chosen card from the current players hand.
+    ///
+    /// Calling this function is invalid if the game is over. Callers can check
+    /// if the game is over using [GameState::is_game_over].
+    pub fn play_card(&mut self, card: Card) -> Result<bool, PlayCardError> {
+        debug_assert!(!self.is_game_over());
+
         let current_player_hand = &self.current_player().hand.cards;
         let Some((played_card_idx, _)) = current_player_hand
             .iter()
             .enumerate()
             .find(|(_, card_in_hand)| **card_in_hand == card)
         else {
-            return Ok(());
+            return Err(PlayCardError::CardNotOnHand);
         };
 
         // SAFETY: `&self.current_trick` is valid for reads as it is non-null,
@@ -111,22 +130,30 @@ impl GameState {
         unsafe { std::ptr::write(&mut self.current_trick, trick) };
 
         match outcome {
-            PlayCardOutcome::CardPlayed => {
+            trick::PlayCardOutcome::CardPlayed => {
                 self.current_player_mut().hand.cards.remove(played_card_idx);
                 self.current_player_id = self.current_player_id.next();
 
-                Ok(())
+                Ok(false)
             }
-            PlayCardOutcome::InvalidCard => Err(()),
-            PlayCardOutcome::TrickComplete(won_trick) => {
+            trick::PlayCardOutcome::InvalidCard => Err(PlayCardError::InvalidCard),
+            trick::PlayCardOutcome::TrickComplete(won_trick) => {
                 self.current_player_mut().hand.cards.remove(played_card_idx);
                 self.current_player_id = won_trick.winning_player;
                 self.tricks_won.push(won_trick);
 
-                Ok(())
+                Ok(true)
             }
         }
     }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum PlayCardError {
+    #[error("cannot play the chosen card because it is not on the current players hand")]
+    CardNotOnHand,
+    #[error("cannot play the chosen card because it would violate the rules")]
+    InvalidCard,
 }
 
 #[cfg(test)]
@@ -179,7 +206,7 @@ mod tests {
             Card!(7 of Diamonds),
         ];
         let mut game_state = GameState::new(
-            Game::Grand(GrandGame {}),
+            Game::Grand(GrandGame { hand: false }),
             skat,
             [
                 PlayerState::new(hand1.into()),
@@ -190,49 +217,49 @@ mod tests {
             PlayerId::FIRST,
         );
 
-        assert_eq!(game_state.current_player_id(), PlayerId::FIRST);
+        assert_eq!(game_state.current_player_id, PlayerId::FIRST);
         assert_eq!(game_state.current_trick.cards().len(), 0);
         assert_eq!(game_state.player(PlayerId::FIRST).hand.cards.len(), 10);
         assert_eq!(game_state.player(PlayerId::SECOND).hand.cards.len(), 10);
         assert_eq!(game_state.player(PlayerId::THIRD).hand.cards.len(), 10);
 
         game_state.play_card(Card!(Jack of Clubs)).unwrap();
-        assert_eq!(game_state.current_player_id(), PlayerId::SECOND);
+        assert_eq!(game_state.current_player_id, PlayerId::SECOND);
         assert_eq!(game_state.current_trick.cards().len(), 1);
         assert_eq!(game_state.player(PlayerId::FIRST).hand.cards.len(), 9);
         assert_eq!(game_state.player(PlayerId::SECOND).hand.cards.len(), 10);
         assert_eq!(game_state.player(PlayerId::THIRD).hand.cards.len(), 10);
 
         game_state.play_card(Card!(Jack of Diamonds)).unwrap();
-        assert_eq!(game_state.current_player_id(), PlayerId::THIRD);
+        assert_eq!(game_state.current_player_id, PlayerId::THIRD);
         assert_eq!(game_state.current_trick.cards().len(), 2);
         assert_eq!(game_state.player(PlayerId::FIRST).hand.cards.len(), 9);
         assert_eq!(game_state.player(PlayerId::SECOND).hand.cards.len(), 9);
         assert_eq!(game_state.player(PlayerId::THIRD).hand.cards.len(), 10);
 
         game_state.play_card(Card!(Jack of Spades)).unwrap();
-        assert_eq!(game_state.current_player_id(), PlayerId::FIRST);
+        assert_eq!(game_state.current_player_id, PlayerId::FIRST);
         assert_eq!(game_state.current_trick.cards().len(), 0);
         assert_eq!(game_state.player(PlayerId::FIRST).hand.cards.len(), 9);
         assert_eq!(game_state.player(PlayerId::SECOND).hand.cards.len(), 9);
         assert_eq!(game_state.player(PlayerId::THIRD).hand.cards.len(), 9);
 
         game_state.play_card(Card!(8 of Clubs)).unwrap();
-        assert_eq!(game_state.current_player_id(), PlayerId::SECOND);
+        assert_eq!(game_state.current_player_id, PlayerId::SECOND);
         assert_eq!(game_state.current_trick.cards().len(), 1);
         assert_eq!(game_state.player(PlayerId::FIRST).hand.cards.len(), 8);
         assert_eq!(game_state.player(PlayerId::SECOND).hand.cards.len(), 9);
         assert_eq!(game_state.player(PlayerId::THIRD).hand.cards.len(), 9);
 
         game_state.play_card(Card!(9 of Clubs)).unwrap();
-        assert_eq!(game_state.current_player_id(), PlayerId::THIRD);
+        assert_eq!(game_state.current_player_id, PlayerId::THIRD);
         assert_eq!(game_state.current_trick.cards().len(), 2);
         assert_eq!(game_state.player(PlayerId::FIRST).hand.cards.len(), 8);
         assert_eq!(game_state.player(PlayerId::SECOND).hand.cards.len(), 8);
         assert_eq!(game_state.player(PlayerId::THIRD).hand.cards.len(), 9);
 
         game_state.play_card(Card!(10 of Clubs)).unwrap();
-        assert_eq!(game_state.current_player_id(), PlayerId::THIRD); // Player 3 won the trick
+        assert_eq!(game_state.current_player_id, PlayerId::THIRD); // Player 3 won the trick
         assert_eq!(game_state.current_trick.cards().len(), 0);
         assert_eq!(game_state.player(PlayerId::FIRST).hand.cards.len(), 8);
         assert_eq!(game_state.player(PlayerId::SECOND).hand.cards.len(), 8);
@@ -280,7 +307,7 @@ mod tests {
             Card!(8 of Clubs),
         ];
         let mut game_state = GameState::new(
-            Game::Grand(GrandGame {}),
+            Game::Grand(GrandGame { hand: false }),
             skat,
             [
                 PlayerState::new(hand1.into()),
@@ -339,6 +366,7 @@ mod tests {
         ];
         let mut game_state = GameState::new(
             Game::Suit(SuitGame {
+                hand: false,
                 trump_suit: Suit::Clubs,
             }),
             skat,
@@ -398,7 +426,7 @@ mod tests {
             Card!(8 of Clubs),
         ];
         let mut game_state = GameState::new(
-            Game::Grand(GrandGame {}),
+            Game::Grand(GrandGame { hand: false }),
             skat,
             [
                 PlayerState::new(hand1.into()),
@@ -464,6 +492,7 @@ mod tests {
         ];
         let mut game_state = GameState::new(
             Game::Suit(SuitGame {
+                hand: false,
                 trump_suit: Suit::Hearts,
             }),
             skat,
