@@ -12,6 +12,11 @@ use crate::{
 };
 
 pub trait Bot {
+    /// Called on the bots turn when it is required to play a card.
+    ///
+    /// # Implementation
+    ///
+    /// Implementors must ensure that the returned card is legally playable.
     fn play_card(&mut self, ctx: BotContext<'_>) -> Card;
 }
 
