@@ -8,3 +8,4 @@ resolver = "3"
 members = ["crates/skat_engine_cli"]
 
 [dependencies]
+thiserror = "2.0.18"

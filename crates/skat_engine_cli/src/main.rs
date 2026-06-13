@@ -12,17 +12,32 @@ use ratatui::{
     widgets::{Block, Paragraph, Widget},
 };
 use skat_engine::{
-    bot::{Bot, grand::GrandBot},
-    game::{Game, grand::GrandGame},
+    bot::{Bot, null::NullBot},
+    game::{Game, null::NullGame},
     state::{
-        game::GameState,
+        game::{GameState, PlayCardError},
         player::{PlayerId, PlayerState},
     },
 };
 use skat_engine_cli::utils::{CardDisplayExt, deal::deal};
+use tracing::{debug, info, instrument, trace};
+use tracing_subscriber::EnvFilter;
 
 fn main() -> io::Result<()> {
-    let game = Game::Grand(GrandGame {});
+    let file_appender = tracing_appender::rolling::daily(".logs", "app.log");
+    let (file_appender, _guard) = tracing_appender::non_blocking(file_appender);
+
+    tracing_subscriber::fmt()
+        .with_writer(file_appender)
+        .with_ansi(false)
+        .with_env_filter(
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
+        )
+        .init();
+
+    info!("starting game");
+
+    let game = Game::Null(NullGame { hand: false });
     let (skat, hand1, hand2, hand3) = deal(&mut rand::rng());
     let players = [
         PlayerState::new(hand1.sorted(&game)),
@@ -34,7 +49,7 @@ fn main() -> io::Result<()> {
 
     let mut app = App::new(
         state,
-        [None, Some(Box::new(GrandBot)), Some(Box::new(GrandBot))],
+        [None, Some(Box::new(NullBot)), Some(Box::new(NullBot))],
     );
 
     ratatui::run(|terminal| app.run(terminal))
@@ -61,21 +76,35 @@ impl App {
         }
     }
 
+    #[instrument(skip_all)]
     /// runs the application's main loop until the user quits
     pub fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
+        trace!("app running");
+
+        self.play_bot_turns();
+
         while !self.exit {
-            // TODO: Handle end of game (currently panics if game ends on bot turn)
-            while self.play_bot_turn() {}
             terminal.draw(|frame| self.draw(frame))?;
             self.handle_events()?;
+            self.play_bot_turns();
         }
+
+        trace!("exiting");
+
         Ok(())
     }
 
+    #[instrument(skip_all)]
+    fn play_bot_turns(&mut self) {
+        while self.play_bot_turn() {}
+    }
+
+    #[instrument(skip_all)]
     fn draw(&self, frame: &mut Frame) {
         frame.render_widget(self, frame.area());
     }
 
+    #[instrument(skip_all)]
     fn handle_events(&mut self) -> io::Result<()> {
         match event::read()? {
             // it's important to check that the event is a key press event as
@@ -88,6 +117,7 @@ impl App {
         Ok(())
     }
 
+    #[instrument(skip_all)]
     fn handle_key_event(&mut self, key_event: KeyEvent) {
         match key_event.code {
             KeyCode::Char('q') => self.exit(),
@@ -102,86 +132,127 @@ impl App {
         }
     }
 
+    #[instrument(skip_all)]
     fn play_bot_turn(&mut self) -> bool {
-        let Some(bot) = &mut self.bots[self.state.current_player_id().into_inner()] else {
+        let Some(bot) = &mut self.bots[self.state.current_player_id.into_inner()] else {
             return false;
         };
+
+        trace!(
+            message = "playing bot turn",
+            player_id = self.state.current_player_id.into_inner()
+        );
+
         let card = bot.play_card(self.state.get_bot_context());
-        self.state
+
+        let trick_compelte = self
+            .state
             .play_card(card)
             .expect("bot should play a valid move");
+
+        if trick_compelte {
+            self.handle_maybe_game_over();
+        }
+
         true
     }
 
+    #[instrument(skip_all)]
     fn exit(&mut self) {
         self.exit = true;
     }
 
+    #[instrument(skip_all)]
     fn clear_error(&mut self) {
-        self.error = None;
+        if self.error.is_some() {
+            debug!("clearing error");
+            self.error = None;
+        }
     }
 
+    #[instrument(skip_all)]
+    fn set_focused_card(&mut self, card: Option<usize>) {
+        if self.focused_card != card {
+            debug!(
+                message = "setting focused card",
+                prev_focused = self.focused_card,
+                new_focused = card
+            );
+            self.focused_card = card;
+        }
+    }
+
+    #[instrument(skip_all)]
     fn focus_next_card(&mut self) {
         self.clear_error();
+
         if self.state.current_player().hand.cards.is_empty() {
-            self.focused_card = None;
+            self.set_focused_card(None);
             return;
         }
-        if let Some(focused_card) = self.focused_card {
-            self.focused_card =
-                Some((focused_card + 1) % self.state.current_player().hand.cards.len());
+
+        let next_card = if let Some(focused_card) = self.focused_card {
+            (focused_card + 1) % self.state.current_player().hand.cards.len()
         } else {
-            self.focused_card = Some(0);
-        }
+            0
+        };
+
+        self.set_focused_card(Some(next_card));
     }
 
+    #[instrument(skip_all)]
     fn focus_prev_card(&mut self) {
         self.clear_error();
+
         if self.state.current_player().hand.cards.is_empty() {
             self.focused_card = None;
             return;
         }
-        if let Some(focused_card) = self.focused_card {
+
+        let next_card = if let Some(focused_card) = self.focused_card {
             if focused_card > 0 {
-                self.focused_card = Some(focused_card - 1);
+                focused_card - 1
             } else {
-                self.focused_card = Some(
-                    self.state
-                        .current_player()
-                        .hand
-                        .cards
-                        .len()
-                        .saturating_sub(1),
-                );
-            };
-        } else {
-            self.focused_card = Some(
                 self.state
                     .current_player()
                     .hand
                     .cards
                     .len()
-                    .saturating_sub(1),
-            );
-        }
+                    .saturating_sub(1)
+            }
+        } else {
+            self.state
+                .current_player()
+                .hand
+                .cards
+                .len()
+                .saturating_sub(1)
+        };
+
+        self.set_focused_card(Some(next_card));
     }
 
+    #[instrument(skip_all)]
     fn focus_card(&mut self) {
         self.clear_error();
+
         if self.state.current_player().hand.cards.is_empty() {
-            self.focused_card = None;
+            self.set_focused_card(None);
             return;
         }
+
         if self.focused_card.is_none() {
-            self.focused_card = Some(0);
+            self.set_focused_card(Some(0));
         }
     }
 
+    #[instrument(skip_all)]
     fn unfocus_card(&mut self) {
         self.clear_error();
-        self.focused_card = None;
+        self.set_focused_card(None);
     }
 
+    #[instrument(skip_all)]
     fn play_card(&mut self) {
         let Some(focused_card) = self.focused_card else {
             self.error = Some("Please select a card to play.".into());
@@ -190,24 +261,59 @@ impl App {
 
         let focused_card = self.state.current_player().hand.cards[focused_card];
 
-        if self.state.play_card(focused_card).is_err() {
-            self.error = Some("Invalid card.".into());
-        } else {
-            self.focused_card = None;
+        debug!(
+            message = "player attempting to play card",
+            card = ?focused_card
+        );
+
+        match self.state.play_card(focused_card) {
+            Ok(trick_complete) => {
+                if trick_complete {
+                    debug!("trick complete");
+                    self.handle_maybe_game_over();
+                }
+                self.set_focused_card(None);
+            }
+            Err(PlayCardError::InvalidCard) => {
+                debug!("player attempted to play invalid card");
+                self.error = Some("Invalid card.".into());
+            }
+            Err(PlayCardError::CardNotOnHand) => {
+                unreachable!("played card should be on the players hand");
+            }
         }
     }
 
-    fn show_help(&mut self) {
-        self.show_help = true;
+    #[instrument(skip_all)]
+    fn handle_maybe_game_over(&mut self) {
+        if self.state.is_game_over() {
+            debug!("game is over");
+            self.exit();
+        }
     }
 
+    #[instrument(skip_all)]
+    fn show_help(&mut self) {
+        if !self.show_help {
+            trace!("showing help menu");
+            self.show_help = true;
+        }
+    }
+
+    #[instrument(skip_all)]
     fn hide_help(&mut self) {
-        self.show_help = false;
+        if self.show_help {
+            trace!("hiding help menu");
+            self.show_help = false;
+        }
     }
 }
 
 impl Widget for &App {
+    #[instrument(skip_all)]
     fn render(self, area: Rect, buf: &mut Buffer) {
+        trace!("rendering app");
+
         if self.show_help {
             KeybindingsMenu.render(area, buf);
             return;
@@ -274,7 +380,7 @@ impl Widget for &App {
 
         Text::from(format!(
             "Player #{}",
-            self.state.current_player_id().into_inner() + 1
+            self.state.current_player_id.into_inner() + 1
         ))
         .centered()
         .render(layout[3], buf);
@@ -313,10 +419,13 @@ impl Widget for &App {
 struct KeybindingsMenu;
 
 impl Widget for &KeybindingsMenu {
+    #[instrument(skip_all)]
     fn render(self, area: Rect, buf: &mut Buffer)
     where
         Self: Sized,
     {
+        trace!("rendering keybindings menu");
+
         let title = Line::from(" Keybindings ".bold());
         let block = Block::bordered()
             .on_black()

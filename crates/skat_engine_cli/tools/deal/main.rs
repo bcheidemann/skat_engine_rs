@@ -16,7 +16,7 @@ mod args;
 pub fn main() {
     let args = Args::parse();
 
-    let game = Game::Grand(GrandGame {});
+    let game = Game::Grand(GrandGame { hand: false });
     let dealt_hands = deal(&mut rand::rng());
 
     match args.output {
