@@ -8,7 +8,7 @@ pub enum Suit {
 
 impl Suit {
     /// The base value of the game when the suit is chosen as trumps.
-    pub fn base_value(&self) -> u8 {
+    pub const fn base_value(&self) -> u8 {
         match self {
             Suit::Diamonds => 9,
             Suit::Hearts => 10,
@@ -17,7 +17,7 @@ impl Suit {
         }
     }
 
-    pub fn name(&self) -> &'static str {
+    pub const fn name(&self) -> &'static str {
         match self {
             Suit::Diamonds => "Diamonds",
             Suit::Hearts => "Hearts",

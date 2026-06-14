@@ -8,6 +8,7 @@ use crate::{
 pub mod grand;
 pub mod null;
 pub mod suit;
+pub mod value;
 
 /// The game being played.
 #[derive(Clone, Debug)]
