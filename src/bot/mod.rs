@@ -1,5 +1,6 @@
 pub mod grand;
 pub mod null;
+pub mod suit;
 
 use std::collections::HashSet;
 

@@ -12,12 +12,13 @@ use ratatui::{
     widgets::{Block, Paragraph, Widget},
 };
 use skat_engine::{
-    bot::{Bot, null::NullBot},
-    game::{Game, null::NullGame},
+    bot::{Bot, suit::SuitBot},
+    game::{Game, suit::SuitGame},
     state::{
         game::{GameState, PlayCardError},
         player::{PlayerId, PlayerState},
     },
+    suit::Suit,
 };
 use skat_engine_cli::utils::{CardDisplayExt, deal::deal};
 use tracing::{debug, info, instrument, trace};
@@ -37,7 +38,10 @@ fn main() -> io::Result<()> {
 
     info!("starting game");
 
-    let game = Game::Null(NullGame { hand: false });
+    let game = Game::Suit(SuitGame {
+        hand: false,
+        trump_suit: Suit::Clubs,
+    });
     let (skat, hand1, hand2, hand3) = deal(&mut rand::rng());
     let players = [
         PlayerState::new(hand1.sorted(&game)),
@@ -49,7 +53,7 @@ fn main() -> io::Result<()> {
 
     let mut app = App::new(
         state,
-        [None, Some(Box::new(NullBot)), Some(Box::new(NullBot))],
+        [None, Some(Box::new(SuitBot)), Some(Box::new(SuitBot))],
     );
 
     ratatui::run(|terminal| app.run(terminal))
