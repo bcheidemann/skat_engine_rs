@@ -100,7 +100,7 @@ impl App {
 
     #[instrument(skip_all)]
     fn play_bot_turns(&mut self) {
-        while self.play_bot_turn() {}
+        while !self.exit && self.play_bot_turn() {}
     }
 
     #[instrument(skip_all)]
